@@ -5,7 +5,7 @@
 The Dynatrace Visual Studio Extension enable you to launch applications with an injected Dynatrace AppMon Agent directly from Visual Studio and look up the source code from applications under diagnosis in Dynatrace AppMon.
 
 * Download the latest version from the Visual Studio Marketplace: T.b.d
-* Visual Studio Extension on the Dynatrace Community: T.b.d. (https://community.dynatrace.com/community/display/DL/Visual+Studio+2015+Extension)
+* Visual Studio Extension on the Dynatrace Community: (https://community.dynatrace.com/community/display/DL/Dynatrace+AppMon+Visual+Studio+Extension)
 
 #### Table of Contents
 
@@ -25,15 +25,15 @@ The Dynatrace Visual Studio Extension enable you to launch applications with an 
 <a name="prerequisites"/>
 ### Prerequisites
 
-* Dynatrace Application Monitoring Version: 6.1 and above
+* Dynatrace Application Monitoring Version: 6.3 and above
 * Visual Studio Version: 2017 (all editions supported)
 
-Find further information in the [Dynatrace community](https://community.dynatrace.com/community/display/DL/Visual+Studio+2015+Extension).T.b.d.
+Find further information in the [Dynatrace community](https://community.dynatrace.com/community/display/DL/Dynatrace+AppMon+Visual+Studio+Extension)
 
 <a name="manual"/>
 ### Manual Installation
 
-* Download the plugin from the [Dynatrace community](https://community.dynatrace.com/community/display/DL/Visual+Studio+2015+Extension) T.b.d.
+* Download the [latest release](https://github.com/Dynatrace/Dynatrace-Visual-Studio-2017/releases/latest) from Github
 * Double-click on the VSIX file
 * Follow the steps displayed by the Visual Studio Extension Installer
 * Restart Visual Studio
