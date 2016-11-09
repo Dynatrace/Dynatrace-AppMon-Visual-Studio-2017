@@ -1,12 +1,11 @@
 <img src="/img/logo/visual-studio.png" width="300" />
 
-# Dynatrace Visual Studio 2015 Extension
+# Dynatrace AppMon Visual Studio 2017 Extension
 
-The Dynatrace Visual Studio Extension enable you to launch applications with an injected Dynatrace Agent directly from Visual Studio
-and perform look-ups of sources files and methods from applications under diagnosis in Dynatrace Application Monitoring.
+The Dynatrace Visual Studio Extension enable you to launch applications with an injected Dynatrace AppMon Agent directly from Visual Studio and look up the source code from applications under diagnosis in Dynatrace AppMon.
 
-* Download Latest Version: https://github.com/Dynatrace/Dynatrace-Visual-Studio-2015/releases/
-* Visual Studio Extension on the Dynatrace Community: https://community.dynatrace.com/community/display/DL/Visual+Studio+2015+Extension
+* Download the latest version from the Visual Studio Marketplace: T.b.d
+* Visual Studio Extension on the Dynatrace Community: T.b.d. (https://community.dynatrace.com/community/display/DL/Visual+Studio+2015+Extension)
 
 #### Table of Contents
 
@@ -27,14 +26,14 @@ and perform look-ups of sources files and methods from applications under diagno
 ### Prerequisites
 
 * Dynatrace Application Monitoring Version: 6.1 and above
-* Visual Studio Version: 2015 (all editions supported)
+* Visual Studio Version: 2017 (all editions supported)
 
-Find further information in the [Dynatrace community](https://community.dynatrace.com/community/display/DL/Visual+Studio+2015+Extension).
+Find further information in the [Dynatrace community](https://community.dynatrace.com/community/display/DL/Visual+Studio+2015+Extension).T.b.d.
 
 <a name="manual"/>
 ### Manual Installation
 
-* Download the plugin from the [Dynatrace community](https://community.dynatrace.com/community/display/DL/Visual+Studio+2015+Extension)
+* Download the plugin from the [Dynatrace community](https://community.dynatrace.com/community/display/DL/Visual+Studio+2015+Extension) T.b.d.
 * Double-click on the VSIX file
 * Follow the steps displayed by the Visual Studio Extension Installer
 * Restart Visual Studio
