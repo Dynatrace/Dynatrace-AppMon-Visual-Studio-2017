@@ -1,0 +1,130 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <!--  This is the file that defines the actual layout and type of the commands.
+        It is divided in different sections (e.g. command definition, command
+        placement, ...), with each defining a specific set of properties.
+        See the comment before each section for more details about how to
+        use it. -->
+
+  <!--  The VSCT compiler (the tool that translates this file into the binary
+        format that VisualStudio will consume) has the ability to run a preprocessor
+        on the vsct file; this preprocessor is (usually) the C++ preprocessor, so
+        it is possible to define includes and macros with the same syntax used
+        in C++ files. Using this ability of the compiler here, we include some files
+        defining some of the constants that we will use inside the file. -->
+
+  <!--This is the file that defines the IDs for all the commands exposed by VisualStudio. -->
+  <Extern href="stdidcmd.h" />
+
+  <!--This header contains the command ids for the menus provided by the shell. -->
+  <Extern href="vsshlids.h" />
+
+  <!--The Commands section is where commands, menus, and menu groups are defined.
+      This section uses a Guid to identify the package that provides the command defined inside it. -->
+  <Commands package="guidFirstPackage">
+    <!-- Inside this section we have different sub-sections: one for the menus, another
+    for the menu groups, one for the buttons (the actual commands), one for the combos
+    and the last one for the bitmaps used. Each element is identified by a command id that
+    is a unique pair of guid and numeric identifier; the guid part of the identifier is usually
+    called "command set" and is used to group different command inside a logically related
+    group; your package should define its own command set in order to avoid collisions
+    with command ids defined by other packages. -->
+
+    <!-- In this section you can define new menu groups. A menu group is a container for
+         other menus or buttons (commands); from a visual point of view you can see the
+         group as the part of a menu contained between two lines. The parent of a group
+         must be a menu. -->
+    <Groups>
+      <Group guid="guidFirstPackageCmdSet" id="MyMenuGroup" priority="0x0600">
+        <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_TOOLS" />
+      </Group>
+      <Group guid="guidRunTestsCmdSet" id="RunTestsMenuGroup" priority="0x0600">
+        <Parent guid="guidSHLMainMenu" id="IDM_VS_CTXT_SOLNNODE" />
+      </Group>
+      <Group guid="guidRunTestsCmdSet" id="RunTestsMenuGroup" priority="0x0600">
+        <Parent guid="guidSHLMainMenu" id="IDM_VS_CTXT_PROJNODE" />
+      </Group>
+    </Groups>
+
+    <!--Buttons section. -->
+    <!--This section defines the elements the user can interact with, like a menu command or a button
+        or combo box in a toolbar. -->
+    <Buttons>
+      <!--To define a menu group you have to specify its ID, the parent menu and its display priority.
+          The command is visible and enabled by default. If you need to change the visibility, status, etc, you can use
+          the CommandFlag node.
+          You can add more than one CommandFlag node e.g.:
+              <CommandFlag>DefaultInvisible</CommandFlag>
+              <CommandFlag>DynamicVisibility</CommandFlag>
+          If you do not want an image next to your command, remove the Icon node /> -->
+      <Button guid="guidFirstPackageCmdSet" id="Command1Id" priority="0x0100" type="Button">
+        <Parent guid="guidFirstPackageCmdSet" id="MyMenuGroup" />
+        <Icon guid="dtIcons" id="logo" />
+        <Strings>
+          <ButtonText>Launch with Dynatrace AppMon</ButtonText>
+        </Strings>
+      </Button>
+      <Button guid="guidFirstPackageCmdSet" id="cmdidConfigCommand" priority="0x0100" type="Button">
+        <Parent guid="guidFirstPackageCmdSet" id="MyMenuGroup" />
+        <Icon guid="dtIcons" id="logo" />
+        <Strings>
+          <ButtonText>Dynatrace AppMon Extension Configuration</ButtonText>
+        </Strings>
+      </Button>
+
+      <Button guid="guidRunTestsCmdSet" id="cmdidRunTestsCommand" priority="0x0100" type="Button">
+        <Parent guid="guidRunTestsCmdSet" id="RunTestsMenuGroup" />
+        <Icon guid="dtIcons" id="logo" />
+        <CommandFlag>DynamicVisibility</CommandFlag>
+        <Strings>
+          <CommandName>cmdidRunTestsCommand</CommandName>
+          <ButtonText>Run Tests with Dynatrace AppMon</ButtonText>
+        </Strings>
+      </Button>
+    </Buttons>
+
+    <!--The bitmaps section is used to define the bitmaps that are used for the commands.-->
+    <Bitmaps>
+      <!--  The bitmap id is defined in a way that is a little bit different from the others:
+            the declaration starts with a guid for the bitmap strip, then there is the resource id of the
+            bitmap strip containing the bitmaps and then there are the numeric ids of the elements used
+            inside a button definition. An important aspect of this declaration is that the element id
+            must be the actual index (1-based) of the bitmap inside the bitmap strip. -->
+      <Bitmap guid="dtIcons" href="Resources\dynatrace-16x16.png" usedList="logo" />
+    </Bitmaps>
+  </Commands>
+
+  <Symbols>
+    <!-- This is the package guid. -->
+    <GuidSymbol name="guidFirstPackage" value="{3fd87c63-4e32-4bd6-87fb-b7a12c35176d}" />
+
+    <!-- This is the guid used to group the menu commands together -->
+    <GuidSymbol name="guidFirstPackageCmdSet" value="{b6ebc2c5-c263-4c46-8045-7cf949e06c64}">
+      <IDSymbol name="MyMenuGroup" value="0x1020" />
+      <IDSymbol name="Command1Id" value="0x0100" />
+      <IDSymbol value="4129" name="cmdidConfigCommand" />
+      <IDSymbol value="4130" name="cmdidRunTestsMenu" />
+    </GuidSymbol>
+ 
+    <GuidSymbol name="dtIcons" value="{AC3ABD54-9FA7-48C0-8B21-5FE09565502A}">
+      <IDSymbol name="logo" value="1" />
+    </GuidSymbol>
+
+    <GuidSymbol name="guidRunTestsCmdSet" value="{5081EA2D-7F00-4141-8782-ADECF250E923}">
+      <IDSymbol name="RunTestsMenuGroup" value="0x2020" />
+      <IDSymbol name="cmdidRunTestsCommand" value="0x2100" />
+    </GuidSymbol>
+
+    <!-- This is the guid used to group the menu commands together -->
+    <GuidSymbol name="guidDynamicMenuPackageCmdSet" value="{acac0ca9-d496-4208-9d28-07e6c887f79b}">
+      <IDSymbol name="MyToolbarItemGroup" value="0x1020" />
+      <IDSymbol name="MyMenuControllerGroup" value="0x1025" />
+      <IDSymbol name="MyMenuController" value ="0x1030"/>
+      <!-- NOTE: The following command expands at run time to some number of ids.
+         Try not to place command ids after it (e.g. 0x0105, 0x0106).
+         If you must add a command id after it, make the gap very large (e.g. 0x200) -->
+      <IDSymbol name="cmdidMyDynamicStartCommand" value="0x0104" />
+    </GuidSymbol>
+  </Symbols>
+</CommandTable>

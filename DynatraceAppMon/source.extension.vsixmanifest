@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
+  <Metadata>
+    <Identity Id="AppMonExtension.Dynatrace.22d0ea1c-af27-4ec5-8737-48b2be07b1e1" Version="6.5.0" Language="en-US" Publisher="Dynatrace" />
+    <DisplayName>Dynatrace AppMon Extension</DisplayName>
+    <Description xml:space="preserve">This extension provides automatic code lookups from the Dynatrace AppMon client and automatic .NET agent injection.</Description>
+    <MoreInfo>https://github.com/Dynatrace/Dynatrace-Visual-Studio-2017</MoreInfo>
+    <License>dynaTraceBSD.txt</License>
+    <Icon>dynatrace-icon.png</Icon>
+    <PreviewImage>Signet_Logo.png</PreviewImage>
+  </Metadata>
+  <Installation>
+    <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[15.0]" />
+  </Installation>
+  <Dependencies>
+    <Dependency Id="Microsoft.Framework.NDP" DisplayName="Microsoft .NET Framework" d:Source="Manual" Version="[4.5,)" />
+    <Dependency Id="Microsoft.VisualStudio.MPF.14.0" DisplayName="Visual Studio MPF 14.0" d:Source="Installed" Version="[14.0]" />
+  </Dependencies>
+  <Assets>
+    <Asset Type="Microsoft.VisualStudio.VsPackage" d:Source="Project" d:ProjectName="%CurrentProject%" Path="|%CurrentProject%;PkgdefProjectOutputGroup|" />
+  </Assets>
+  <Prerequisites>
+    <Prerequisite Id="Microsoft.Net.Core.Component.SDK" Version="[15.0.25904.2,16.0)" DisplayName=".NET Core 1.0.1 development tools" />
+    <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[15.0.25904.2,16.0)" DisplayName="Visual Studio core editor" />
+  </Prerequisites>
+</PackageManifest>
