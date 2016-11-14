@@ -31,12 +31,11 @@ The Dynatrace Visual Studio Extension enable you to launch applications with an 
 Find further information in the [Dynatrace community](https://community.dynatrace.com/community/display/DL/Dynatrace+AppMon+Visual+Studio+Extension)
 
 <a name="manual"/>
-### Manual Installation
+### Installation
 
-* Download the [latest release](https://github.com/Dynatrace/Dynatrace-Visual-Studio-2017/releases/latest) from Github
-* Double-click on the VSIX file
-* Follow the steps displayed by the Visual Studio Extension Installer
-* Restart Visual Studio
+* In Visual Studio open Tools -> Extensions and Updates...
+* Select "Online" and use the "Search Visual Studion Gallery" search box
+* Search for Dynatrace AppMon and follow the instructions to install the extension
 
 <a name="configuration"/>
 ## Configuration
