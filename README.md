@@ -28,8 +28,6 @@ The Dynatrace Visual Studio Extension enable you to launch applications with an 
 * Dynatrace Application Monitoring Version: 6.3 and above
 * Visual Studio Version: 2017 (all editions supported)
 
-Find further information in the [Dynatrace community](https://community.dynatrace.com/community/display/DL/Dynatrace+AppMon+Visual+Studio+Extension)
-
 <a name="installation"/>
 ### Installation
 
