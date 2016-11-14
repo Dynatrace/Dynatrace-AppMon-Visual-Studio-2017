@@ -11,7 +11,7 @@ The Dynatrace Visual Studio Extension enable you to launch applications with an 
 
 * [Installation](#installation)  
  * [Prerequisites](#prerequisites)  
- * [Manual Installation](#manual)
+ * [Installation](#installation)
 * [Configuration](#configuration)
 * [Use the Visual Studio Extension](#use)
  * [Launcher](#launcher)
@@ -30,7 +30,7 @@ The Dynatrace Visual Studio Extension enable you to launch applications with an 
 
 Find further information in the [Dynatrace community](https://community.dynatrace.com/community/display/DL/Dynatrace+AppMon+Visual+Studio+Extension)
 
-<a name="manual"/>
+<a name="installation"/>
 ### Installation
 
 * In Visual Studio open Tools -> Extensions and Updates...
