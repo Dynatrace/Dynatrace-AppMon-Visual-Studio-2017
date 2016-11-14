@@ -4,8 +4,8 @@
 
 The Dynatrace Visual Studio Extension enable you to launch applications with an injected Dynatrace AppMon Agent directly from Visual Studio and look up the source code from applications under diagnosis in Dynatrace AppMon.
 
-* Download the latest version from the Visual Studio Marketplace: https://visualstudiogallery.msdn.microsoft.com/77c28a92-9bbe-46a9-b206-98301d4ecd3b 
-* Visual Studio Extension on the Dynatrace Community: (https://community.dynatrace.com/community/display/DL/Dynatrace+AppMon+Visual+Studio+Extension)
+* Download the latest version from the [Visual Studio Marketplace](https://visualstudiogallery.msdn.microsoft.com/77c28a92-9bbe-46a9-b206-98301d4ecd3b)
+* The Visual Studio Extension on the [Dynatrace Community](https://community.dynatrace.com/community/display/DL/Dynatrace+AppMon+Visual+Studio+Extension)
 
 #### Table of Contents
 
