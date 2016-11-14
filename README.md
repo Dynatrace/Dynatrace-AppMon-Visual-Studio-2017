@@ -25,8 +25,10 @@ The Dynatrace Visual Studio Extension enable you to launch applications with an 
 <a name="prerequisites"/>
 ### Prerequisites
 
-* Dynatrace Application Monitoring Version: 6.3 and above
 * Visual Studio Version: 2017 (all editions supported)
+* Dynatrace AppMon Server 6.3+
+* Dynatrace AppMon .NET agent installed on your machine (to run/test your application with the .NET agent)
+* Dynatrace AppMon Client running on your machine (for CodeLink) 
 
 <a name="installation"/>
 ### Installation
@@ -38,11 +40,9 @@ The Dynatrace Visual Studio Extension enable you to launch applications with an 
 <a name="configuration"/>
 ## Configuration
 
-The settings for the extension are located under Tools / Dynatrace AppMon Extension Configuration:
+First you will need to configure the extension. Open the settings dialog from Tools -> Dynatrace AppMon Extension Configuration and enter the details about the Collector you would like the .NET agent to connect to. If you want to use CodeLink you have to make sure that the REST API in your AppMon Client is enabled. 
 
-![configuration](/img/conf/configuration_1.png) 
-
-Configuration screen:
+The settings will be stored in your Visual Studio solution, so you can maintain different configurations for different solutions.
 
 ![configuration](/img/conf/configuration_2.jpg) 
 
@@ -52,18 +52,14 @@ Configuration screen:
 <a name="launcher"/>
 ### Launcher
 
-The lancher will run applications with an injected Dynatrace Agent using the agent name and additional parameters defined in the run configuration. The agent will output debug information into the console.
+The lancher will run applications with an injected Dynatrace .NET agent using the agent name and additional parameters defined in the run configuration. The agent will output debug information into the console. The launcher supports Windows and Web based projects and tests.
 
 ![edit run configurations](/img/use/launcher.png) 
-
-
-The launcher supports Windows and Web based project; Test projects are not yet supported.
-
 
 <a name="source_code"/>
 ### Source Code Look-up
 
-The Dynatrace Client enables you to analyze PurePaths down to the individual methods that have been instrumented in the context of the captured transaction. When you identify a problematic method either in the PurePath view or in the Methods view of the Dynatrace Client, you can use the Source Code Lookup to jump to the source code line if you have the Visual Studio solution open.
+The AppMon client lets you analyze PurePaths down to the individual methods that have been instrumented in the context of the captured transaction. When you identify a problematic method either in the PurePath view or in the Methods view of the AppMon client, you can use the CodeLink functionality to jump to the source code line in the open Visual Studio solution.
 
 ![edit run configurations](/img/use/source_code_lookup.png) 
 
