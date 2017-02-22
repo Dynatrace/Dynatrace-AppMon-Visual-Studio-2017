@@ -27,6 +27,7 @@ namespace DynaTrace.CodeLink
             this.typeName = typeName;
             this.methodName = methodName;
             this.parameters = parameters;
+            fixGenericParameters();
         }
 
         public override string ToString()
@@ -107,43 +108,13 @@ namespace DynaTrace.CodeLink
             return res;
         }
 
-        public static Lookup parse(Context context, String str)
+        private void fixGenericParameters()
         {
-            // split lookup string and namespace, class, name,... to variables
-            string[] parts = str.Split(';');
-
-            string typeName = parts[0];
-            string methodName = parts[1];
-            string[] parameters = parseParams(parts[2]);
-
             for (int i = 0; i < parameters.Length; i++)
             {
-                parameters[i] = parameters[i].Replace("System.SByte", "sbyte");
-                parameters[i] = parameters[i].Replace("System.Int16", "short");
-                parameters[i] = parameters[i].Replace("System.Int32", "int");
-                parameters[i] = parameters[i].Replace("System.Int64", "long");
-                parameters[i] = parameters[i].Replace("System.Byte", "byte");
-                parameters[i] = parameters[i].Replace("System.UInt16", "ushort");
-                parameters[i] = parameters[i].Replace("System.UInt32", "uint");
-                parameters[i] = parameters[i].Replace("System.UInt64", "ulong");
-                parameters[i] = parameters[i].Replace("System.Boolean", "bool");
-                parameters[i] = parameters[i].Replace("System.Char", "char");
-                parameters[i] = parameters[i].Replace("System.Decimal", "decimal");
-                parameters[i] = parameters[i].Replace("System.Single", "float");
-                parameters[i] = parameters[i].Replace("System.Double", "double");
-                parameters[i] = parameters[i].Replace("System.Object", "object");
-                parameters[i] = parameters[i].Replace("System.String", "string");
-                parameters[i] = parameters[i].Replace("&", "");
-
                 // generic types like IList`1
                 parameters[i] = Regex.Replace(parameters[i], @"`\d+", "");
             }
-
-
-            Lookup res = new Lookup(typeName, methodName, parameters);
-            context.log(Context.LOG_INFO + "looking up " + res.ToString());
-            return res;
-
         }
     }
 }
