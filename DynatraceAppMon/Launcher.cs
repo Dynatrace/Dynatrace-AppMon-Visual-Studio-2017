@@ -4,6 +4,10 @@ using EnvDTE;
 using EnvDTE80;
 using System.Reflection;
 using DynaTrace.CodeLink;
+using Microsoft.VisualStudio.Shell.Interop;
+using Microsoft.VisualStudio.Shell.Flavor;
+using Microsoft.VisualStudio.Shell;
+using System.Threading.Tasks;
 
 namespace FirstPackage
 {
@@ -14,6 +18,17 @@ namespace FirstPackage
         private System.Diagnostics.Process lastRunningIIS = null;
         private DTE2 _applicationObject;
         private Context context;
+
+        private enum LaunchType { Assembly, WebApplication, WebSite };
+        /// <summary>
+        /// web site project GUID refers to project type
+        /// </summary>
+        private readonly string WEB_SITE_PROJECT_TYPE_GUID = "{E24C65DC-7377-472B-9ABA-BC803B73C61A}";
+        /// <summary>
+        /// web application project GUID refers to project subtype, project type GUID in this case describes language thus
+        /// may be omitted in launch type check
+        /// </summary>
+        private readonly string WEB_APPLICATION_PROJECT_SUBTYPE_GUID = "{349C5851-65DF-11DA-9384-00065B846F21}";
 
         public bool BuildBeforeLaunch
         {
@@ -104,8 +119,10 @@ namespace FirstPackage
                 string msg = "";
                 msg = "FileName: " + startProject.FileName;
                 //msg += "\nFullName: " + startProject.FullName;
-                msg += "\nProject-level access to " + startProject.CodeModel.CodeElements.Count.ToString() +
-                    " CodeElements through the CodeModel";
+                if (startProject.CodeModel != null) { 
+                    msg += "\nProject-level access to " + startProject.CodeModel.CodeElements.Count.ToString() +
+                        " CodeElements through the CodeModel";
+                }
                 msg += "\nApplication containing this project: " + startProject.DTE.Name + ", Version: " +
                     getVisualStudioVersion(_applicationObject.Version) + " " +
                     _applicationObject.Version;
@@ -196,9 +213,18 @@ namespace FirstPackage
                     if (BuildBeforeLaunch)
                         _applicationObject.DTE.Solution.SolutionBuild.Build(true);
 
-                    //logStartProject(firstRunnable);
-                    // start project                    
-                    LaunchProject(firstRunnable);
+                    // start project
+                    switch (GetProjectLaunchType(firstRunnable)) {
+                        case LaunchType.WebSite:
+                            LaunchWebSiteProject(firstRunnable);
+                            break;
+                        case LaunchType.WebApplication:
+                            LaunchWebApplicationProject(firstRunnable);
+                            break;
+                        case LaunchType.Assembly:
+                            LaunchProject(firstRunnable);
+                            break;
+                    }
                 }
                 catch (Exception launchExp)
                 {
@@ -298,7 +324,7 @@ namespace FirstPackage
                 {
                     ret = project;
                 }
-                else if (project.Kind == Constants.vsProjectKindSolutionItems)
+                else if (project.Kind == EnvDTE.Constants.vsProjectKindSolutionItems)
                 {
                     // Solution folder 
                     foreach (ProjectItem projectItem in project.ProjectItems)
@@ -351,7 +377,7 @@ namespace FirstPackage
 
             if (project != null && projects != null)
             {
-                if (project.Kind == Constants.vsProjectKindSolutionItems)
+                if (project.Kind == EnvDTE.Constants.vsProjectKindSolutionItems)
                 {
                     foreach (ProjectItem projectItem in project.ProjectItems)
                     {
@@ -538,23 +564,6 @@ namespace FirstPackage
             return installPath;
         }
 
-        /// <summary>
-        /// returns path to IE
-        /// </summary>
-        /// <returns></returns>
-        private string GetBrowserPath()
-        {
-            string installPath = System.Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-            if (!installPath.EndsWith("\\") && !installPath.EndsWith("/"))
-                installPath += "\\";
-            installPath += @"Internet Explorer\iexplore.exe";
-
-            if (!System.IO.File.Exists(installPath))
-                throw new ApplicationException(String.Format("Could not find {0}", installPath));
-
-            return installPath;
-        }
-
         private bool expectProperty(string propertyName, string propertyValue)
         {
             if (propertyValue == UNEXPECTED_DEFAULT_PROPERTY_VALUE)
@@ -572,250 +581,259 @@ namespace FirstPackage
             return versionString.IndexOf("v4.0") >= 0 ? 4 : 2;
         }
 
+        private void LaunchWebApplicationProject(Project project)
+        {
+            context.log(Context.LOG_INFO + "Launching Webapp project");
+            string DebugStartAction = GetProperty(project, "WebApplication.DebugStartAction", "");
+            string ProjectBrowseURL = GetProperty(project, "WebApplication.BrowseURL", "");
+            string launchURL = ProjectBrowseURL;
+            switch (DebugStartAction)
+            {
+                case "0": // current page
+                          // get active document and its URL
+                          // if no document opened, open default project URL
+                    Document ActiveDocument = null;
+                    try
+                    {
+                        ActiveDocument = _applicationObject.ActiveDocument;
+                    }
+                    catch (ArgumentException)
+                    {
+                        // weird case when project properties tab is open
+                        context.log(Context.LOG_INFO + "Launching \"Current page\" start action, but active document can't be located");
+                    }
+                    if (ActiveDocument != null)
+                    {
+                        Property BrowseToURL = ActiveDocument.ProjectItem.Properties.Item("EurekaExtender.BrowseToURL");
+                        if (BrowseToURL != null)
+                        {
+                            string DocumentURL = "";
+                            try
+                            {
+                                DocumentURL = BrowseToURL.Value.ToString();
+                            }
+                            catch (NullReferenceException)
+                            {
+                                context.log(Context.LOG_INFO + "Launching \"Current page\" start action, but active document (\"" + ActiveDocument.Name + "\") has null \"EurekaExtender.BrowseToURL\" property");
+                            }
+                            DocumentURL = DocumentURL.Replace("~", "");
+                            if (!DocumentURL.StartsWith("/"))
+                            {
+                                DocumentURL = "/" + DocumentURL;
+                            }
+                            launchURL += DocumentURL;
+                        }
+                        else
+                        {
+                            context.log(Context.LOG_INFO + "Launching \"Current page\" start action, but failed to get \"EurekaExtender.BrowseToURL\" property of active document");
+                        }
+                    }
+                    else
+                    {
+                        context.log(Context.LOG_INFO + "Launching \"Current page\" start action, but active document is null");
+                    }
+                    context.log(Context.LOG_INFO + "Launching \"Current page\" start action, launch URL: " + launchURL);
+                    break;
+                case "1": // specific page
+                    string StartPage = GetProperty(project, "WebApplication.StartPageUrl", "");
+                    ProjectItem StartPageItem = null;
+                    try
+                    {
+                        StartPageItem = project.ProjectItems.Item(StartPage);
+                    }
+                    catch (ArgumentException)
+                    {
+                        context.log(Context.LOG_INFO + "Launching \"Specific page\" start action, but StartPage project item (\"" + StartPage + "\") can't be located");
+                    }
+                    if (StartPageItem != null)
+                    {
+                        // FIXME: DUPLICATED CODE!
+                        Property BrowseToURL = StartPageItem.Properties.Item("EurekaExtender.BrowseToURL");
+                        if (BrowseToURL != null)
+                        {
+                            string DocumentURL = "";
+                            try
+                            {
+                                DocumentURL = BrowseToURL.Value.ToString();
+                            }
+                            catch (NullReferenceException)
+                            {
+                                context.log(Context.LOG_INFO + "Launching \"Specific page\" start action, but selected document (\"" + StartPageItem.Name + "\") has null \"EurekaExtender.BrowseToURL\" property");
+                            }
+                            DocumentURL = DocumentURL.Replace("~", "");
+                            if (!DocumentURL.StartsWith("/"))
+                            {
+                                DocumentURL = "/" + DocumentURL;
+                            }
+                            launchURL += DocumentURL;
+                        }
+                        else
+                        {
+                            context.log(Context.LOG_INFO + "Launching \"Specific page\" start action, but failed to get \"EurekaExtender.BrowseToURL\" property of selected document");
+                        }
+                    }
+                    else
+                    {
+                        context.log(Context.LOG_INFO + "Launching \"Specific page\" start action, but StartPage project item is null");
+                    }
+                    context.log(Context.LOG_INFO + "Launching \"Specific page\" start action, launch URL: " + launchURL);
+                    break;
+                case "2": // external program
+                    context.log(Context.LOG_ERROR + "\"External program\" start action is not supported");
+                    System.Windows.Forms.MessageBox.Show("\"External program\" start action is not supported", "dynaTrace Launcher", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
+                    return;
+                case "3": // start URL
+                    string StartURL = GetProperty(project, "WebApplication.StartExternalUrl", "");
+                    if (StartURL.Length > 0)
+                    {
+                        launchURL = StartURL;
+                    }
+                    else
+                    {
+                        context.log(Context.LOG_INFO + "Launching \"Start URL\" start action, but Start URL is empty");
+                        System.Windows.Forms.MessageBox.Show("Start URL is empty in project properties", "dynaTrace Launcher", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+                        return;
+                    }
+                    context.log(Context.LOG_INFO + "Launching \"Start URL\" start action, launch URL: " + launchURL);
+                    break;
+                case "4": // don't open a page
+                          // not supported
+                    context.log(Context.LOG_ERROR + "\"Don't open a page\" start action is not supported");
+                    System.Windows.Forms.MessageBox.Show("\"Don't open a page\" start action is not supported", "dynaTrace Launcher", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
+                    return;
+                default:
+
+                    context.log(Context.LOG_ERROR + "Unknown start action: " + DebugStartAction);
+                    System.Windows.Forms.MessageBox.Show("Unknown start action value: " + DebugStartAction, "dynaTrace Launcher", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+                    return;
+            }
+
+            // we have to start the internal Microsoft WebServer
+            string startProgram = "C:\\Program Files (x86)\\IIS Express\\iisexpress.exe";
+            // WB string startWorking = System.IO.Path.GetDirectoryName(_addInInstance.DTE.FileName);
+            string startWorking = ".";
+            string ProjectPath = GetProperty(project, "FullPath", "");
+            string startArguments = "/config:\"" + ProjectPath + "..\\.vs\\config\\applicationhost.config\" /site:\"" + project.Name + "\" /apppool:\"Clr4IntegratedAppPool\"";
+
+            StopLastRunningIIS();
+
+            context.log(Context.LOG_INFO + "Starting new IIS Express instance with command line: " + startProgram + " " + startArguments);
+            lastRunningIIS = LaunchProcess(startProgram, startArguments, startWorking, "vs");
+
+            // now we start the browser with the correct page
+            OpenWebBrowserWithDelay(launchURL, this.WaitForBrowserTime); 
+        }
+
+        private void LaunchWebSiteProject(Project project)
+        {
+            context.log(Context.LOG_INFO + "Launching WebSite project");
+
+            // website web application config resides beside solution, DevelopmentServerCommandLine property gives proper command line
+            string startProgram = GetProperty(project, "DevelopmentServerCommandLine", "");
+
+            StopLastRunningIIS();
+            
+            context.log(Context.LOG_INFO + "Starting new IIS Express instance with command line: " + startProgram);
+            lastRunningIIS = LaunchProcess(startProgram, "", ".", "vs");
+
+            // now we start the browser with the correct page
+            OpenWebBrowserWithDelay(GetProperty(project, "BrowseURL", ""), this.WaitForBrowserTime);
+        }
+
+        private async void OpenWebBrowserWithDelay(string launchURL, int delay)
+        {
+            await System.Threading.Tasks.Task.Delay(delay);
+            context.log(Context.LOG_INFO + "Starting web browser, url: " + launchURL);
+            System.Diagnostics.Process.Start(launchURL);
+        }
 
         private void LaunchProject(Project project)
         {
-            // first we need to check what kind of project we are
-            // VS2010 and VS2008 use different property names for web projects - VS2010 uses the prefix WebApplication.            
-            if (HasProperty(project, "WebSiteType") || HasProperty(project, "WebApplication.DevelopmentServerCommandLine"))
+            // we have to start the output assembly
+            // get all project related properties    
+            bool result = true;
+            string assemblyName = GetProperty(project, "AssemblyName", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
+            result &= expectProperty("AssemblyName", assemblyName);
+            string projectFileName = System.IO.Path.GetDirectoryName(project.FileName);
+
+            Properties configProperties = project.ConfigurationManager.ActiveConfiguration.Properties;
+
+            string outputDir = GetProperty(configProperties, "OutputPath", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
+            result &= expectProperty("OutputPath", assemblyName);
+            string startArguments = GetProperty(configProperties, "StartArguments", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
+            result &= expectProperty("StartArguments", assemblyName);
+            string startWorking = GetProperty(configProperties, "StartWorkingDirectory", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
+            result &= expectProperty("StartWorkingDirectory", assemblyName);
+            string startProgram = GetProperty(configProperties, "StartProgram", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
+            result &= expectProperty("StartProgram", assemblyName);
+
+            // all required project properties found -> we can launch
+            if (result)
             {
-                context.log(Context.LOG_INFO + "Launching Webapp or Website project");
-                string DebugStartAction = GetProperty(project, "WebApplication.DebugStartAction", "");
-                string ProjectBrowseURL = GetProperty(project, "WebApplication.BrowseURL", "");
-                string LaunchURL = ProjectBrowseURL;
-                switch (DebugStartAction)
-                {
-                    case "0": // current page
-                        // get active document and its URL
-                        // if no document opened, open default project URL
-                        Document ActiveDocument = null;
-                        try
-                        {
-                            ActiveDocument = _applicationObject.ActiveDocument;
-                        }
-                        catch (ArgumentException)
-                        {
-                            // weird case when project properties tab is open
-                            context.log(Context.LOG_INFO + "Launching \"Current page\" start action, but active document can't be located");
-                        }
-                        if (ActiveDocument != null)
-                        {
-                            Property BrowseToURL = ActiveDocument.ProjectItem.Properties.Item("EurekaExtender.BrowseToURL");
-                            if (BrowseToURL != null)
-                            {
-                                string DocumentURL = "";
-                                try
-                                {
-                                    DocumentURL = BrowseToURL.Value.ToString();
-                                } 
-                                catch (NullReferenceException)
-                                {
-                                    context.log(Context.LOG_INFO + "Launching \"Current page\" start action, but active document (\"" + ActiveDocument.Name +"\") has null \"EurekaExtender.BrowseToURL\" property");
-                                }
-                                DocumentURL = DocumentURL.Replace("~", "");
-                                if (! DocumentURL.StartsWith("/"))
-                                {
-                                    DocumentURL = "/" + DocumentURL;
-                                }
-                                LaunchURL += DocumentURL;
-                            }
-                            else
-                            {
-                                context.log(Context.LOG_INFO + "Launching \"Current page\" start action, but failed to get \"EurekaExtender.BrowseToURL\" property of active document");
-                            }
-                        }
-                        else
-                        {
-                            context.log(Context.LOG_INFO + "Launching \"Current page\" start action, but active document is null");
-                        }
-                        context.log(Context.LOG_INFO + "Launching \"Current page\" start action, launch URL: " + LaunchURL);
-                        break;
-                    case "1": // specific page
-                        string StartPage = GetProperty(project, "WebApplication.StartPageUrl", "");
-                        ProjectItem StartPageItem = null;
-                        try
-                        {
-                             StartPageItem = project.ProjectItems.Item(StartPage);
-                        } catch (ArgumentException)
-                        {
-                            context.log(Context.LOG_INFO + "Launching \"Specific page\" start action, but StartPage project item (\""+ StartPage + "\") can't be located");
-                        }
-                        if (StartPageItem != null)
-                        {
-                            // FIXME: DUPLICATED CODE!
-                            Property BrowseToURL = StartPageItem.Properties.Item("EurekaExtender.BrowseToURL");
-                            if (BrowseToURL != null)
-                            {
-                                string DocumentURL = "";
-                                try
-                                {
-                                    DocumentURL = BrowseToURL.Value.ToString();
-                                }
-                                catch (NullReferenceException)
-                                {
-                                    context.log(Context.LOG_INFO + "Launching \"Specific page\" start action, but selected document (\"" + StartPageItem.Name + "\") has null \"EurekaExtender.BrowseToURL\" property");
-                                }
-                                DocumentURL = DocumentURL.Replace("~", "");
-                                if (!DocumentURL.StartsWith("/"))
-                                {
-                                    DocumentURL = "/" + DocumentURL;
-                                }
-                                LaunchURL += DocumentURL;
-                            }
-                            else
-                            {
-                                context.log(Context.LOG_INFO + "Launching \"Specific page\" start action, but failed to get \"EurekaExtender.BrowseToURL\" property of selected document");
-                            }
-                        }
-                        else
-                        {
-                            context.log(Context.LOG_INFO + "Launching \"Specific page\" start action, but StartPage project item is null");
-                        }
-                        context.log(Context.LOG_INFO + "Launching \"Specific page\" start action, launch URL: " + LaunchURL);
-                        break;
-                    case "2": // external program
-                        context.log(Context.LOG_ERROR + "\"External program\" start action is not supported");
-                        System.Windows.Forms.MessageBox.Show("\"External program\" start action is not supported", "dynaTrace Launcher", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
-                        return;
-                    case "3": // start URL
-                        string StartURL = GetProperty(project, "WebApplication.StartExternalUrl", "");
-                        if (StartURL.Length > 0)
-                        {
-                            LaunchURL = StartURL;
-                        }
-                        else
-                        {
-                            context.log(Context.LOG_INFO + "Launching \"Start URL\" start action, but Start URL is empty");
-                            System.Windows.Forms.MessageBox.Show("Start URL is empty in project properties", "dynaTrace Launcher", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
-                            return;
-                        }
-                        context.log(Context.LOG_INFO + "Launching \"Start URL\" start action, launch URL: " + LaunchURL);
-                        break;
-                    case "4": // don't open a page
-                        // not supported
-                        context.log(Context.LOG_ERROR + "\"Don't open a page\" start action is not supported");
-                        System.Windows.Forms.MessageBox.Show("\"Don't open a page\" start action is not supported", "dynaTrace Launcher", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
-                        return;
-                    default:
-                        context.log(Context.LOG_ERROR + "Unknown start action: " + DebugStartAction);
-                        System.Windows.Forms.MessageBox.Show("Unknown start action value: " + DebugStartAction, "dynaTrace Launcher", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
-                        return;
-                }
-                // we have to start the internal Microsoft WebServer
-                string startProgram = "C:\\Program Files (x86)\\IIS Express\\iisexpress.exe";
-                // WB string startWorking = System.IO.Path.GetDirectoryName(_addInInstance.DTE.FileName);
-                string startWorking = ".";
+                // ensure we have the correct path for the executable
+                if (!projectFileName.EndsWith("\\") && !projectFileName.EndsWith("/"))
+                    projectFileName += "\\";
+                if (!outputDir.EndsWith("\\") && !outputDir.EndsWith("/"))
+                    outputDir += "\\";
+                if (outputDir.StartsWith("\\") || outputDir.StartsWith("/"))
+                    outputDir = outputDir.Substring(1);
 
-                string ProjectPath = GetProperty(project, "FullPath", "");
-                string StartArguments = "/config:\"" + ProjectPath + "..\\.vs\\config\\applicationhost.config\" /site:\"" + project.Name + "\" /apppool:\"Clr4IntegratedAppPool\"";
-                if (lastRunningIIS != null)
-                {
-                    context.log(Context.LOG_INFO + "Attempting to close running IIS Express instance");
-                    try
-                    {
-                        // FIXME add error handling, detect if process still running
-                        if (!lastRunningIIS.HasExited)
-                        {
-                            lastRunningIIS.CloseMainWindow();
-                            context.log(Context.LOG_INFO + "Sent close request to running IIS Express instance, sleeping...");
-                            System.Threading.Thread.Sleep(1000);
-                        }
-                        lastRunningIIS.Close();
-                    }
-                    catch (Exception e)
-                    {
-                        context.log(Context.LOG_ERROR + "Exceptino when closing running IIS Express instance: " + e.GetType().ToString());
-                    }
-                }
-                context.log(Context.LOG_INFO + "Starting new IIS Express instance with command line: " + startProgram + " " + StartArguments);
-                lastRunningIIS = LaunchProcess(startProgram, StartArguments, startWorking, "vs");
+                // do we start an external program or our output?
+                if (startProgram == null || startProgram.Length <= 0)
+                    startProgram = String.Format("{0}{1}{2}.exe", projectFileName, outputDir, assemblyName);
+                if (startWorking == null || startWorking.Length <= 0)
+                    startWorking = projectFileName + outputDir;
 
-                // lets wait 3 seconds to give the launching webserver some time to be instrumented
-                System.Threading.Thread.Sleep(this.WaitForBrowserTime);
+                context.log(Context.LOG_INFO + "Launching Application: " + startProgram + ", Startarguments: " + startArguments + ", Workingdir: " + startWorking + ", Assembly: " + assemblyName);
 
-
-                // now we start the browser with the correct page
-                startProgram = GetBrowserPath();
-                StartArguments = LaunchURL;
-                /*
-                string ostartPage = GetProperty(project, "StartPage", "----");
-                string startPageUrl = GetProperty(project, "WebApplication.StartPageUrl", "----");
-                string startExternalURL = GetProperty(project, "WebApplication.StartExternalUrl", "----");
-                // need to find a way to know the currently edited page
-                // _DTE.ActiveDocument ->  Document.ProjectItem
-                // "EurekaExtender.BrowseToURL" WTF
-                if (_applicationObject.ActiveDocument != null)
-                {
-                    HasProperty(_applicationObject.ActiveDocument.ProjectItem.Properties, "dupa");
-                    if (_applicationObject.ActiveDocument.ProjectItem != null)
-                    {
-                        context.log(Context.LOG_INFO + "Active document: " + _applicationObject.ActiveDocument.ProjectItem.Name);
-                        context.log(Context.LOG_INFO + "Active document FileName: " + _applicationObject.ActiveDocument.ProjectItem.Properties.Item("FileName"));
-                        context.log(Context.LOG_INFO + "Active document BrowseToURL: " + _applicationObject.ActiveDocument.ProjectItem.Properties.Item("BrowseToURL"));
-                        context.log(Context.LOG_INFO + "Active document WebApplication.BrowseURL: " + _applicationObject.ActiveDocument.ProjectItem.Properties.Item("WebApplication.BrowseURL"));
-                    } else
-                    {
-                        context.log(Context.LOG_INFO + "No project item for active document!");
-                    }
-                } 
-                else
-                {
-                    context.log(Context.LOG_INFO + "No active document!");
-                }
-                if (HasProperty(project, "StartPage") && startAction == "1")
-                {
-                    if (!startArguments.EndsWith("/")) startArguments += "/";
-
-                    string startPage = HasProperty(project, "WebApplication.StartPageUrl") ? GetProperty(project, "WebApplication.StartPageUrl", "") : GetProperty(project, "StartPage", "");
-                    startArguments += startPage;
-                }
-                */
-                context.log(Context.LOG_INFO + "Launching Webapp / Website: " + startProgram + ", Startarguments: " + StartArguments);
-
-                LaunchProcess(startProgram, StartArguments, null, null);
+                LaunchProcess(startProgram, startArguments, startWorking, assemblyName);
             }
-            else
+            
+        }
+
+        private void StopLastRunningIIS()
+        {
+
+            if (lastRunningIIS != null)
             {
-                // we have to start the output assembly
-                // get all project related properties    
-                bool result = true;
-                string assemblyName = GetProperty(project, "AssemblyName", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
-                result &= expectProperty("AssemblyName", assemblyName);
-                string projectFileName = System.IO.Path.GetDirectoryName(project.FileName);
-
-                Properties configProperties = project.ConfigurationManager.ActiveConfiguration.Properties;
-
-                string outputDir = GetProperty(configProperties, "OutputPath", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
-                result &= expectProperty("OutputPath", assemblyName);
-                string startArguments = GetProperty(configProperties, "StartArguments", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
-                result &= expectProperty("StartArguments", assemblyName);
-                string startWorking = GetProperty(configProperties, "StartWorkingDirectory", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
-                result &= expectProperty("StartWorkingDirectory", assemblyName);
-                string startProgram = GetProperty(configProperties, "StartProgram", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
-                result &= expectProperty("StartProgram", assemblyName);
-
-                // all required project properties found -> we can launch
-                if (result)
+                context.log(Context.LOG_INFO + "Attempting to close running IIS Express instance");
+                try
                 {
-                    // ensure we have the correct path for the executable
-                    if (!projectFileName.EndsWith("\\") && !projectFileName.EndsWith("/"))
-                        projectFileName += "\\";
-                    if (!outputDir.EndsWith("\\") && !outputDir.EndsWith("/"))
-                        outputDir += "\\";
-                    if (outputDir.StartsWith("\\") || outputDir.StartsWith("/"))
-                        outputDir = outputDir.Substring(1);
-
-                    // do we start an external program or our output?
-                    if (startProgram == null || startProgram.Length <= 0)
-                        startProgram = String.Format("{0}{1}{2}.exe", projectFileName, outputDir, assemblyName);
-                    if (startWorking == null || startWorking.Length <= 0)
-                        startWorking = projectFileName + outputDir;
-
-                    context.log(Context.LOG_INFO + "Launching Application: " + startProgram + ", Startarguments: " + startArguments + ", Workingdir: " + startWorking + ", Assembly: " + assemblyName);
-
-                    LaunchProcess(startProgram, startArguments, startWorking, assemblyName);
+                    // FIXME add error handling, detect if process still running
+                    if (!lastRunningIIS.HasExited)
+                    {
+                        lastRunningIIS.CloseMainWindow();
+                        context.log(Context.LOG_INFO + "Sent close request to running IIS Express instance, sleeping...");
+                        System.Threading.Thread.Sleep(1000);
+                    }
+                    lastRunningIIS.Close();
+                }
+                catch (Exception e)
+                {
+                    context.log(Context.LOG_ERROR + "Exceptino when closing running IIS Express instance: " + e.GetType().ToString());
                 }
             }
+        }
+
+        private LaunchType GetProjectLaunchType(Project project)
+        {
+            IVsSolution solution = (IVsSolution) Package.GetGlobalService(typeof(SVsSolution));
+
+            IVsHierarchy hierarchy = null;
+            solution.GetProjectOfUniqueName(project.UniqueName, out hierarchy);
+
+            IVsAggregatableProjectCorrected AP = hierarchy as IVsAggregatableProjectCorrected;
+            string projTypeGuids = null;
+            AP.GetAggregateProjectTypeGuids(out projTypeGuids);
+            projTypeGuids = projTypeGuids.ToUpper();
+
+            if (projTypeGuids.Contains(WEB_SITE_PROJECT_TYPE_GUID.ToUpper())) {
+                return LaunchType.WebSite;
+            } else if (projTypeGuids.Contains(WEB_APPLICATION_PROJECT_SUBTYPE_GUID.ToUpper())) {
+                return LaunchType.WebApplication;
+            }
+
+            return LaunchType.Assembly;
         }
 
     }
