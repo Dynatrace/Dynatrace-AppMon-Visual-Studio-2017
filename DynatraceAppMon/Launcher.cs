@@ -759,30 +759,40 @@ namespace FirstPackage
             Properties configProperties = project.ConfigurationManager.ActiveConfiguration.Properties;
 
             string outputDir = GetProperty(configProperties, "OutputPath", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
-            result &= expectProperty("OutputPath", assemblyName);
+            result &= expectProperty("OutputPath", outputDir);
             string startArguments = GetProperty(configProperties, "StartArguments", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
-            result &= expectProperty("StartArguments", assemblyName);
+            result &= expectProperty("StartArguments", startArguments);
             string startWorking = GetProperty(configProperties, "StartWorkingDirectory", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
-            result &= expectProperty("StartWorkingDirectory", assemblyName);
+            result &= expectProperty("StartWorkingDirectory", startWorking);
             string startProgram = GetProperty(configProperties, "StartProgram", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
-            result &= expectProperty("StartProgram", assemblyName);
+            result &= expectProperty("StartProgram", startProgram);
 
             // all required project properties found -> we can launch
             if (result)
             {
                 // ensure we have the correct path for the executable
                 if (!projectFileName.EndsWith("\\") && !projectFileName.EndsWith("/"))
+                {
                     projectFileName += "\\";
+                }
                 if (!outputDir.EndsWith("\\") && !outputDir.EndsWith("/"))
+                {
                     outputDir += "\\";
+                }
                 if (outputDir.StartsWith("\\") || outputDir.StartsWith("/"))
+                {
                     outputDir = outputDir.Substring(1);
+                }
 
                 // do we start an external program or our output?
                 if (startProgram == null || startProgram.Length <= 0)
+                {
                     startProgram = String.Format("{0}{1}{2}.exe", projectFileName, outputDir, assemblyName);
+                }
                 if (startWorking == null || startWorking.Length <= 0)
+                {
                     startWorking = projectFileName + outputDir;
+                }
 
                 context.log(Context.LOG_INFO + "Launching Application: " + startProgram + ", Startarguments: " + startArguments + ", Workingdir: " + startWorking + ", Assembly: " + assemblyName);
 
