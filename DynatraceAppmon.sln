@@ -1,21 +1,18 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.25906.0
+VisualStudioVersion = 15.0.26228.4
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DynatraceAppMon", "DynatraceAppMon\DynatraceAppMon.csproj", "{BC6807DF-FDFC-4E5F-85E4-F007239D272C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
-		Dupa|Any CPU = Dupa|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{BC6807DF-FDFC-4E5F-85E4-F007239D272C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{BC6807DF-FDFC-4E5F-85E4-F007239D272C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BC6807DF-FDFC-4E5F-85E4-F007239D272C}.Dupa|Any CPU.ActiveCfg = Dupa|Any CPU
-		{BC6807DF-FDFC-4E5F-85E4-F007239D272C}.Dupa|Any CPU.Build.0 = Dupa|Any CPU
 		{BC6807DF-FDFC-4E5F-85E4-F007239D272C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BC6807DF-FDFC-4E5F-85E4-F007239D272C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
