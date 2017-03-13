@@ -823,7 +823,7 @@ namespace FirstPackage
                     {
                         return LaunchType.WebSite;
                     }
-                    else if (projTypeGuids.Contains(WEB_APPLICATION_PROJECT_SUBTYPE_GUID.ToUpper()))
+                    if (projTypeGuids.Contains(WEB_APPLICATION_PROJECT_SUBTYPE_GUID.ToUpper()))
                     {
                         return LaunchType.WebApplication;
                     }
