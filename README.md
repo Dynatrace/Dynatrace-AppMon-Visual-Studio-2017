@@ -25,7 +25,7 @@ The Dynatrace Visual Studio Extension enable you to launch applications with an 
 <a name="prerequisites"/>
 ### Prerequisites
 
-* Visual Studio Version: 2017 (all editions supported)
+* Visual Studio Version: 2017 (all editions supported), starting with plugin version 6.5.3 Visual Studio 2013 and 2015 are also supported 
 * Dynatrace AppMon Server 6.3+
 * Dynatrace AppMon .NET agent installed on your machine (to run/test your application with the .NET agent)
 * Dynatrace AppMon Client running on your machine (for CodeLink) 

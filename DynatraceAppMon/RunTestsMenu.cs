@@ -136,7 +136,9 @@ namespace FirstPackage
             if (result == 0)
             {
                 aggregatableProject = (IVsAggregatableProject)hierarchy;
-                result = aggregatableProject.GetAggregateProjectTypeGuids(out projectTypeGuids);
+                if (aggregatableProject != null) { 
+                    result = aggregatableProject.GetAggregateProjectTypeGuids(out projectTypeGuids);
+                }
             }
 
             return projectTypeGuids;

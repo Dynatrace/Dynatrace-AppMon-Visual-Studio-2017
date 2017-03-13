@@ -7,19 +7,17 @@ using DynaTrace.CodeLink;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Shell.Flavor;
 using Microsoft.VisualStudio.Shell;
-using System.Threading.Tasks;
 
 namespace FirstPackage
 {
     public class Launcher
     {
 
-        private string UNEXPECTED_DEFAULT_PROPERTY_VALUE = "dynaTrace_unexpected";
         private System.Diagnostics.Process lastRunningIIS = null;
         private DTE2 _applicationObject;
         private Context context;
 
-        private enum LaunchType { Assembly, WebApplication, WebSite };
+        private enum LaunchType { Assembly, WebApplication, WebSite, Unknown };
         /// <summary>
         /// web site project GUID refers to project type
         /// </summary>
@@ -223,6 +221,9 @@ namespace FirstPackage
                             break;
                         case LaunchType.Assembly:
                             LaunchProject(firstRunnable);
+                            break;
+                        case LaunchType.Unknown:
+                            System.Windows.Forms.MessageBox.Show("Unable to launch project, unsupported project type", "dynaTrace Launcher", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
                             break;
                     }
                 }
@@ -435,12 +436,12 @@ namespace FirstPackage
             return null;
         }
 
-        private bool HasProperty(Project project, string propName)
+        private static bool HasProperty(Project project, string propName)
         {
             return HasProperty(project.Properties, propName);
         }
 
-        private bool HasProperty(Properties properties, string propName)
+        private static bool HasProperty(Properties properties, string propName)
         {
             //Dictionary<string, Object> props = new Dictionary<string, Object>();
             System.Collections.IEnumerator propEnum = properties.GetEnumerator();
@@ -469,12 +470,12 @@ namespace FirstPackage
         /// <param name="propName"></param>
         /// <param name="defaultValue"></param>
         /// <returns></returns>
-        private string GetProperty(Project project, string propName, string defaultValue)
+        private static string GetProperty(Project project, string propName, string defaultValue)
         {
             return GetProperty(project.Properties, propName, defaultValue);
         }
 
-        private string GetProperty(Properties properties, string propName, string defaultValue)
+        private static string GetProperty(Properties properties, string propName, string defaultValue)
         {
             if (HasProperty(properties, propName))
             {
@@ -562,17 +563,6 @@ namespace FirstPackage
             }
 
             return installPath;
-        }
-
-        private bool expectProperty(string propertyName, string propertyValue)
-        {
-            if (propertyValue == UNEXPECTED_DEFAULT_PROPERTY_VALUE)
-            {
-                context.log(Context.LOG_ERROR + "Missing project property \"" + propertyName + "\" in this project.");
-                System.Windows.Forms.MessageBox.Show("Could not launch application with dynaTrace support:\nMissing project property \"" + propertyName + "\"", "dynaTrace Launcher", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
-                return false;
-            }
-            return true;
         }
 
         private int GetDotNetFrameworkForProject(Project project)
@@ -708,17 +698,17 @@ namespace FirstPackage
                     return;
             }
 
+            StopLastRunningIIS();
+
             // we have to start the internal Microsoft WebServer
             string startProgram = "C:\\Program Files (x86)\\IIS Express\\iisexpress.exe";
             // WB string startWorking = System.IO.Path.GetDirectoryName(_addInInstance.DTE.FileName);
-            string startWorking = ".";
-            string ProjectPath = GetProperty(project, "FullPath", "");
-            string startArguments = "/config:\"" + ProjectPath + "..\\.vs\\config\\applicationhost.config\" /site:\"" + project.Name + "\" /apppool:\"Clr4IntegratedAppPool\"";
 
-            StopLastRunningIIS();
+            // for web application server command line gives only IIS parameters
+            string startArguments = GetProperty(project, "WebApplication.DevelopmentServerCommandLine", "");
 
             context.log(Context.LOG_INFO + "Starting new IIS Express instance with command line: " + startProgram + " " + startArguments);
-            lastRunningIIS = LaunchProcess(startProgram, startArguments, startWorking, "vs");
+            lastRunningIIS = LaunchProcess(startProgram, startArguments, ".", "vs");
 
             // now we start the browser with the correct page
             OpenWebBrowserWithDelay(launchURL, this.WaitForBrowserTime); 
@@ -728,11 +718,11 @@ namespace FirstPackage
         {
             context.log(Context.LOG_INFO + "Launching WebSite project");
 
-            // website web application config resides beside solution, DevelopmentServerCommandLine property gives proper command line
+            StopLastRunningIIS();
+
+            // website web application config resides beside solution, DevelopmentServerCommandLine property gives full command line
             string startProgram = GetProperty(project, "DevelopmentServerCommandLine", "");
 
-            StopLastRunningIIS();
-            
             context.log(Context.LOG_INFO + "Starting new IIS Express instance with command line: " + startProgram);
             lastRunningIIS = LaunchProcess(startProgram, "", ".", "vs");
 
@@ -751,52 +741,39 @@ namespace FirstPackage
         {
             // we have to start the output assembly
             // get all project related properties    
-            bool result = true;
-            string assemblyName = GetProperty(project, "AssemblyName", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
-            result &= expectProperty("AssemblyName", assemblyName);
-            string projectFileName = System.IO.Path.GetDirectoryName(project.FileName);
-
-            Properties configProperties = project.ConfigurationManager.ActiveConfiguration.Properties;
-
-            string outputDir = GetProperty(configProperties, "OutputPath", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
-            result &= expectProperty("OutputPath", outputDir);
-            string startArguments = GetProperty(configProperties, "StartArguments", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
-            result &= expectProperty("StartArguments", startArguments);
-            string startWorking = GetProperty(configProperties, "StartWorkingDirectory", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
-            result &= expectProperty("StartWorkingDirectory", startWorking);
-            string startProgram = GetProperty(configProperties, "StartProgram", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
-            result &= expectProperty("StartProgram", startProgram);
+            var cfg = new AssemblyLauchConfig(project);
 
             // all required project properties found -> we can launch
-            if (result)
+            if (cfg.IsValid())
             {
+                string projectFileName = System.IO.Path.GetDirectoryName(project.FileName);
                 // ensure we have the correct path for the executable
                 if (!projectFileName.EndsWith("\\") && !projectFileName.EndsWith("/"))
                 {
                     projectFileName += "\\";
                 }
-                if (!outputDir.EndsWith("\\") && !outputDir.EndsWith("/"))
+                if (!cfg.OutputDir.EndsWith("\\") && !cfg.OutputDir.EndsWith("/"))
                 {
-                    outputDir += "\\";
+                    cfg.OutputDir += "\\";
                 }
-                if (outputDir.StartsWith("\\") || outputDir.StartsWith("/"))
+                if (cfg.OutputDir.StartsWith("\\") || cfg.OutputDir.StartsWith("/"))
                 {
-                    outputDir = outputDir.Substring(1);
+                    cfg.OutputDir = cfg.OutputDir.Substring(1);
                 }
 
                 // do we start an external program or our output?
-                if (startProgram == null || startProgram.Length <= 0)
+                if (cfg.StartProgram == null || cfg.StartProgram.Length <= 0)
                 {
-                    startProgram = String.Format("{0}{1}{2}.exe", projectFileName, outputDir, assemblyName);
+                    cfg.StartProgram = String.Format("{0}{1}{2}.exe", projectFileName, cfg.OutputDir, cfg.AssemblyName);
                 }
-                if (startWorking == null || startWorking.Length <= 0)
+                if (cfg.StartWorking == null || cfg.StartWorking.Length <= 0)
                 {
-                    startWorking = projectFileName + outputDir;
+                    cfg.StartWorking = projectFileName + cfg.OutputDir;
                 }
 
-                context.log(Context.LOG_INFO + "Launching Application: " + startProgram + ", Startarguments: " + startArguments + ", Workingdir: " + startWorking + ", Assembly: " + assemblyName);
+                context.log(Context.LOG_INFO + "Launching Application: " + cfg.StartProgram + ", Startarguments: " + cfg.StartArguments + ", Workingdir: " + cfg.StartWorking + ", Assembly: " + cfg.AssemblyName);
 
-                LaunchProcess(startProgram, startArguments, startWorking, assemblyName);
+                LaunchProcess(cfg.StartProgram, cfg.StartArguments, cfg.StartWorking, cfg.AssemblyName);
             }
             
         }
@@ -827,24 +804,77 @@ namespace FirstPackage
 
         private LaunchType GetProjectLaunchType(Project project)
         {
-            IVsSolution solution = (IVsSolution) Package.GetGlobalService(typeof(SVsSolution));
+            try { 
+                IVsSolution solution = (IVsSolution) Package.GetGlobalService(typeof(SVsSolution));
 
-            IVsHierarchy hierarchy = null;
-            solution.GetProjectOfUniqueName(project.UniqueName, out hierarchy);
+                IVsHierarchy hierarchy = null;
+                solution.GetProjectOfUniqueName(project.UniqueName, out hierarchy);
 
-            IVsAggregatableProjectCorrected AP = hierarchy as IVsAggregatableProjectCorrected;
-            string projTypeGuids = null;
-            AP.GetAggregateProjectTypeGuids(out projTypeGuids);
-            projTypeGuids = projTypeGuids.ToUpper();
+                IVsAggregatableProjectCorrected AP = hierarchy as IVsAggregatableProjectCorrected;
+                string projTypeGuids = null;
 
-            if (projTypeGuids.Contains(WEB_SITE_PROJECT_TYPE_GUID.ToUpper())) {
-                return LaunchType.WebSite;
-            } else if (projTypeGuids.Contains(WEB_APPLICATION_PROJECT_SUBTYPE_GUID.ToUpper())) {
-                return LaunchType.WebApplication;
+                // e.g. .NET core applications are not aggregable
+                if (AP != null)
+                {
+                    AP.GetAggregateProjectTypeGuids(out projTypeGuids);
+                    projTypeGuids = projTypeGuids.ToUpper();
+
+                    if (projTypeGuids.Contains(WEB_SITE_PROJECT_TYPE_GUID.ToUpper()))
+                    {
+                        return LaunchType.WebSite;
+                    }
+                    if (projTypeGuids.Contains(WEB_APPLICATION_PROJECT_SUBTYPE_GUID.ToUpper()))
+                    {
+                        return LaunchType.WebApplication;
+                    }
+                }
+
+                if (new AssemblyLauchConfig(project).IsValid())
+                {
+                    return LaunchType.Assembly;
+                }
+            }
+            catch (Exception ex)
+            {
+                context.log(Context.LOG_ERROR + "Error while resolving project launch type: " + ex);
             }
 
-            return LaunchType.Assembly;
+            return LaunchType.Unknown;
         }
 
+        private bool ContainsLaunchAssemblyProperties()
+        {
+            throw new NotImplementedException();
+        }
+
+        private class AssemblyLauchConfig {
+
+            private string UNEXPECTED_DEFAULT_PROPERTY_VALUE = "dynaTrace_unexpected";
+
+            public string AssemblyName { get; set; }
+            public string OutputDir { get; set; }
+            public string StartArguments { get; set; }
+            public string StartWorking { get; set; }
+            public string StartProgram { get; set; }
+
+            public AssemblyLauchConfig(Project project) {
+
+                AssemblyName = GetProperty(project, "AssemblyName", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
+
+                Properties configProperties = project.ConfigurationManager.ActiveConfiguration.Properties;
+                OutputDir = GetProperty(configProperties, "OutputPath", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
+                StartArguments = GetProperty(configProperties, "StartArguments", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
+                StartWorking = GetProperty(configProperties, "StartWorkingDirectory", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
+                StartProgram = GetProperty(configProperties, "StartProgram", UNEXPECTED_DEFAULT_PROPERTY_VALUE);
+
+                List<String> propValues = new List<string>() { AssemblyName, OutputDir, StartArguments, StartWorking, StartProgram };
+            }
+
+            public bool IsValid() {
+                var allValues = new List<string>() { AssemblyName, OutputDir, StartArguments, StartWorking, StartProgram };
+                return !allValues.Contains(UNEXPECTED_DEFAULT_PROPERTY_VALUE);
+            } 
+
+        }
     }
 }
