@@ -31,3 +31,5 @@ You can do this by:
 3. selecting "Browse..."
 4. navigating to and selecting *VisualStudioInstallationDir*\Common7\IDE\PrivateAssemblies\Microsoft.VisualStudio.Shell.**15**.0.dll
 5. removing the Microsoft.VisualStudio.Shell.12.0 Reference
+
+![Compilation problem screenshot](https://github.com/Dynatrace/Dynatrace-Visual-Studio-2017/raw/master/img/faq/compilation_problem.png)
