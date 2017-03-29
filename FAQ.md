@@ -20,3 +20,14 @@ To capture PurePaths and Test Automation data for Unit Tests run from Visual Stu
 ## Log files
 
 The log files are available under: C:\Users\<USERNAME>\AppData\Roaming\dynaTrace\CodeLinkNet\log
+
+## Project doesn't compile in Visual Studio
+Please ensure you have [Visual Studio SDK](https://docs.microsoft.com/en-us/visualstudio/extensibility/installing-the-visual-studio-sdk) installed for your version.
+
+If OleMenuCommandService or Package classes are not found, replace the reference to Microsoft.VisualStudio.Shell.**12**.0, with one located in *VisualStudioInstallationDir*\Common7\IDE\PrivateAssemblies\Microsoft.VisualStudio.Shell.**15**.0.dll (select ...**15**.0.dll for VS 2017, the highest one available in the directory for others).
+You can do this by:
+1. right-clicking the References node under DynatraceAppMon
+2. selecting "Add Reference..."
+3. selecting "Browse..."
+4. navigating to and selecting *VisualStudioInstallationDir*\Common7\IDE\PrivateAssemblies\Microsoft.VisualStudio.Shell.**15**.0.dll
+5. removing the Microsoft.VisualStudio.Shell.12.0 Reference
