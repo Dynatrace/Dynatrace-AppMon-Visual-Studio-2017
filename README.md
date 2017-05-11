@@ -9,61 +9,52 @@ The Dynatrace Visual Studio Extension enable you to launch applications with an 
 
 #### Table of Contents
 
-* [Installation](#installation)  
+* [Extension Installation](#extension-installation)  
  * [Prerequisites](#prerequisites)  
  * [Installation](#installation)
 * [Configuration](#configuration)
-* [Use the Visual Studio Extension](#use)
+* [Using the Visual Studio Extension](#using-the-visual-studio-extension)
  * [Launcher](#launcher)
- * [Source Code Look-up](#source_code)
-*  [Problems? Questions? Suggestions?](#feedback)
+ * [Source Code Look-up](#source-code-look-up)
+* [Problems? Questions? Suggestions?](#problems-questions-suggestions)
 
+## Extension Installation
 
-<a name="installation"/>
-## Installation
-
-<a name="prerequisites"/>
 ### Prerequisites
 
 * Visual Studio Version: 2017 (all editions supported), starting with plugin version 6.5.3 Visual Studio 2013 and 2015 are also supported 
 * Dynatrace AppMon Server 6.3+
 * Dynatrace AppMon .NET agent installed on your machine (to run/test your application with the .NET agent)
-* Dynatrace AppMon Client running on your machine (for CodeLink) 
+* Dynatrace AppMon Client running on your machine (for CodeLink - source code lookup) 
 
-<a name="installation"/>
 ### Installation
 
 * In Visual Studio open Tools -> Extensions and Updates...
-* Select "Online" and use the "Search Visual Studion Gallery" search box
+* Select "Online" and use the "Search Visual Studio Gallery" search box
 * Search for Dynatrace AppMon and follow the instructions to install the extension
 
-<a name="configuration"/>
 ## Configuration
 
-First you will need to configure the extension. Open the settings dialog from Tools -> Dynatrace AppMon Extension Configuration and enter the details about the Collector you would like the .NET agent to connect to. If you want to use CodeLink you have to make sure that the REST API in your AppMon Client is enabled. 
+First you will need to configure the extension. Open the settings dialog from Tools -> Dynatrace AppMon Extension Configuration and enter the details about the Collector you would like the .NET agent to connect to. If you want to use CodeLink (source code lookup) you have to make sure that the REST API in your AppMon Client is enabled. 
 
 The settings will be stored in your Visual Studio solution, so you can maintain different configurations for different solutions.
 
 ![configuration](/img/conf/configuration_2.jpg) 
 
-<a name="use"/>
-## Use the Visual Studio Extension
+## Using the Visual Studio Extension
 
-<a name="launcher"/>
 ### Launcher
 
-The lancher will run applications with an injected Dynatrace .NET agent using the agent name and additional parameters defined in the run configuration. The agent will output debug information into the console. The launcher supports Windows and Web based projects and tests.
+The launcher will run applications with an injected Dynatrace .NET agent using the agent name and additional parameters defined in the run configuration. The agent will output debug information into the console. The launcher supports Windows and Web based projects and tests.
 
 ![edit run configurations](/img/use/launcher.png) 
 
-<a name="source_code"/>
-### Source Code Look-up
+### Source Code Lookup
 
 The AppMon client lets you analyze PurePaths down to the individual methods that have been instrumented in the context of the captured transaction. When you identify a problematic method either in the PurePath view or in the Methods view of the AppMon client, you can use the CodeLink functionality to jump to the source code line in the open Visual Studio solution.
 
 ![edit run configurations](/img/use/source_code_lookup.png) 
 
-<a name="feedback"/>
 ## Problems? Questions? Suggestions?
 
 * [Visual Studio Extension FAQ / Troubleshooting Guide](FAQ.md)
