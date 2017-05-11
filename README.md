@@ -15,7 +15,7 @@ The Dynatrace Visual Studio Extension enable you to launch applications with an 
 * [Configuration](#configuration)
 * [Using the Visual Studio Extension](#using-the-visual-studio-extension)
  * [Launcher](#launcher)
- * [Source Code Look-up](#source-code-look-up)
+ * [Source Code Look-up](#source-code-lookup)
 * [Problems? Questions? Suggestions?](#problems-questions-suggestions)
 
 ## Extension Installation
