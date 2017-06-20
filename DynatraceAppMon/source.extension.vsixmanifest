@@ -3,7 +3,7 @@
   <Metadata>
     <Identity Id="DynatraceAppMonExtension" Version="6.5.3" Language="en-US" Publisher="Dynatrace" />
     <DisplayName>Dynatrace AppMon</DisplayName>
-    <Description xml:space="preserve">Integrate Visual Studion with Dynatrace AppMon.
+    <Description xml:space="preserve">Integrate Visual Studio with Dynatrace AppMon.
 CodeLink - Automatically look up your source code from the Dynatrace AppMon client in Visual Studio. 
 Launch your .NET applications with an injected Dynatrace agent. 
 Run your unit tests with the Dynatrace agent.</Description>
