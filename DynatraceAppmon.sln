@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26228.4
+VisualStudioVersion = 15.0.26730.12
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DynatraceAppMon", "DynatraceAppMon\DynatraceAppMon.csproj", "{BC6807DF-FDFC-4E5F-85E4-F007239D272C}"
 EndProject
@@ -20,11 +20,12 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6D5BDC02-B4D7-4145-88E1-6AB31DCC5E9D}
 		dtLauncher_ServerPort = 9998
 		dtLauncher_WaitForBrowserTime = 3000
 		dtLauncher_AgentGuid = {DA7CFC47-3E35-4c4e-B495-534F93B28683}
 		dtLauncher_BuildBeforeLaunch = -1
-		dtLauncher_CustomAgentName = 
+		dtLauncher_CustomAgentName = agent2
 		dtLauncher_ServerName = dynaday.dynatrace.vmta
 	EndGlobalSection
 EndGlobal

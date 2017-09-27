@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using EnvDTE;
 using EnvDTE80;
 using System.Reflection;
@@ -16,8 +17,9 @@ namespace FirstPackage
         private System.Diagnostics.Process lastRunningIIS = null;
         private DTE2 _applicationObject;
         private Context context;
+        private string UNEXPECTED_DEFAULT_PROPERTY_VALUE = "dynaTrace_unexpected";
 
-        private enum LaunchType { Assembly, WebApplication, WebSite, Unknown };
+        private enum LaunchType { Assembly, WebApplication, WebSite, WebApplicationDotNetCore, Unknown };
         /// <summary>
         /// web site project GUID refers to project type
         /// </summary>
@@ -27,6 +29,8 @@ namespace FirstPackage
         /// may be omitted in launch type check
         /// </summary>
         private readonly string WEB_APPLICATION_PROJECT_SUBTYPE_GUID = "{349C5851-65DF-11DA-9384-00065B846F21}";
+
+        private readonly string WEB_APPLICATION_DOT_NET_CORE_GUID = "{9A19103F-16F7-4668-BE54-9A1E7A4F7556}";
 
         public bool BuildBeforeLaunch
         {
@@ -221,6 +225,9 @@ namespace FirstPackage
                             break;
                         case LaunchType.Assembly:
                             LaunchProject(firstRunnable);
+                            break;
+                        case LaunchType.WebApplicationDotNetCore:
+                            LaunchWebApplicationProject(firstRunnable);
                             break;
                         case LaunchType.Unknown:
                             System.Windows.Forms.MessageBox.Show("Unable to launch project, unsupported project type", "dynaTrace Launcher", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
@@ -577,6 +584,11 @@ namespace FirstPackage
             string DebugStartAction = GetProperty(project, "WebApplication.DebugStartAction", "");
             string ProjectBrowseURL = GetProperty(project, "WebApplication.BrowseURL", "");
             string launchURL = ProjectBrowseURL;
+            if (project.Kind.Contains(WEB_APPLICATION_DOT_NET_CORE_GUID))
+            {
+                DebugStartAction = "0";
+                launchURL = GetProperty(project, "ProjectUrl", "");
+            }
             switch (DebugStartAction)
             {
                 case "0": // current page
@@ -673,7 +685,7 @@ namespace FirstPackage
                     System.Windows.Forms.MessageBox.Show("\"External program\" start action is not supported", "dynaTrace Launcher", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
                     return;
                 case "3": // start URL
-                    string StartURL = GetProperty(project, "WebApplication.StartExternalUrl", "");
+                    string StartURL = GetProperty(project, "WebApplication.StartExternalUrl", "");//GetProperty(project, "ProjectUrl", "");//
                     if (StartURL.Length > 0)
                     {
                         launchURL = StartURL;
@@ -692,7 +704,6 @@ namespace FirstPackage
                     System.Windows.Forms.MessageBox.Show("\"Don't open a page\" start action is not supported", "dynaTrace Launcher", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Information);
                     return;
                 default:
-
                     context.log(Context.LOG_ERROR + "Unknown start action: " + DebugStartAction);
                     System.Windows.Forms.MessageBox.Show("Unknown start action value: " + DebugStartAction, "dynaTrace Launcher", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
                     return;
@@ -703,13 +714,24 @@ namespace FirstPackage
             // we have to start the internal Microsoft WebServer
             string startProgram = "C:\\Program Files (x86)\\IIS Express\\iisexpress.exe";
             // WB string startWorking = System.IO.Path.GetDirectoryName(_addInInstance.DTE.FileName);
-
-            // for web application server command line gives only IIS parameters
-            string startArguments = GetProperty(project, "WebApplication.DevelopmentServerCommandLine", "");
-
+            string startArguments = null;
+            if (project.Kind.Contains(WEB_APPLICATION_DOT_NET_CORE_GUID))
+            {
+                string ProjectPath = GetProperty(project, "FullPath", "");
+                ProjectPath = "C:\\Users\\piotr.lugowski\\source\\repos\\eShopOnWeb\\src";
+                startArguments = "/config:\"" + ProjectPath + "\\..\\.vs\\config\\applicationhost.config\" /site:\"" + project.Name + "\" /apppool:\"Clr4IntegratedAppPool\"";
+                //startArguments = "/config:\"C:\\Users\\piotr.lugowski\\source\\repos\\WebApplication2DotNetCore\\.vs\\config\\applicationhost.config\" /site:\"WebApplication2DotNetCore\" /apppool:\"Clr4IntegratedAppPool";
+            }
+            else
+            {
+                startArguments = GetProperty(project, "WebApplication.DevelopmentServerCommandLine", "");
+            }
+            //// for web application server command line gives only IIS parameters
+            /// C:\Users\piotr.lugowski\source\repos\WebApplication2DotNetCore\WebApplication2DotNetCore
+           
             context.log(Context.LOG_INFO + "Starting new IIS Express instance with command line: " + startProgram + " " + startArguments);
             lastRunningIIS = LaunchProcess(startProgram, startArguments, ".", "vs");
-
+            
             // now we start the browser with the correct page
             OpenWebBrowserWithDelay(launchURL, this.WaitForBrowserTime); 
         }
@@ -813,6 +835,9 @@ namespace FirstPackage
                 IVsAggregatableProjectCorrected AP = hierarchy as IVsAggregatableProjectCorrected;
                 string projTypeGuids = null;
 
+                Guid projectGuid;
+                solution.GetProjectTypeGuid(3, project.FullName,out projectGuid);
+
                 // e.g. .NET core applications are not aggregable
                 if (AP != null)
                 {
@@ -826,6 +851,13 @@ namespace FirstPackage
                     if (projTypeGuids.Contains(WEB_APPLICATION_PROJECT_SUBTYPE_GUID.ToUpper()))
                     {
                         return LaunchType.WebApplication;
+                    }
+                }
+                else
+                {
+                    if (project.Kind.Contains(WEB_APPLICATION_DOT_NET_CORE_GUID.ToUpper()))
+                    {
+                        return LaunchType.WebApplicationDotNetCore;
                     }
                 }
 
