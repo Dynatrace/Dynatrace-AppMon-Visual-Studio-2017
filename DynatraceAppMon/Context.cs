@@ -5,12 +5,13 @@ using System.Collections.Generic;
 using System.Text;
 using System.Diagnostics;
 
-
-using Microsoft.Win32;
-
 using EnvDTE;
 using EnvDTE80;
 using System.Globalization;
+using System.Linq;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using TextRange = EnvDTE.TextRange;
 using TextSelection = EnvDTE.TextSelection;
 
@@ -23,6 +24,7 @@ namespace DynaTrace.CodeLink
         public const string LOG_INFO = "INFO ";
         public const string LOG_WARN = "WARN ";
         public const string LOG_ERROR = "ERROR ";
+        public const string PROJECT_KIND_WEBSITE_PROJECT = "{E24C65DC-7377-472B-9ABA-BC803B73C61A}";
 
         private DynatraceConfig config;
         private string visualStudioVersion;
@@ -256,32 +258,29 @@ namespace DynaTrace.CodeLink
 
         private bool HasClassFiles(ProjectItem projectItem)
         {
-            bool classFileOccurred = false;
-            for (int i = 1; i <= projectItem.FileCount; i++)
+            return (GetClassFiles(projectItem, true).Any());
+        }
+
+        private List<String> GetClassFiles(ProjectItem projectItem, bool stopOnFirstFound)
+        {
+            List<String> classFiles = new List<string>();
+            //Indexes of FileNames are from 1 to FileCount for the project item.
+            for (short i = 1; i <= projectItem.FileCount; i++)
             {
-                string fileExtension = Path.GetExtension(projectItem.FileNames[(short)i]);
-                if (fileExtension != null && (fileExtension.Contains(".cs") || fileExtension.Contains(".vb")))
+                string fileName = projectItem.FileNames[i];
+                string fileExtension = Path.GetExtension(fileName);
+                if (fileExtension != null && (fileExtension.EndsWith(".cs")))
                 {
-                    classFileOccurred = true;
-                    break;
+                    classFiles.Add(fileName);
+                    if (stopOnFirstFound) break;
                 }
             }
-            return classFileOccurred;
+            return classFiles;
         }
 
         private List<String> GetClassFiles(ProjectItem projectItem)
         {
-            List<String> classFiles = new List<string>();
-            for (int i = 1; i <= projectItem.FileCount; i++)
-            {
-                string fileName = projectItem.FileNames[(short)i];
-                string fileExtension = Path.GetExtension(fileName);
-                if (fileExtension != null && (fileExtension.Contains(".cs") || fileExtension.Contains(".vb")))
-                {
-                    classFiles.Add(fileName);
-                }
-            }
-            return classFiles;
+            return GetClassFiles(projectItem, false);
         }
 
         private CodeType FindCodeType(ProjectItems projectItems, string fullName)
@@ -366,14 +365,8 @@ namespace DynaTrace.CodeLink
                             //CodeClass were not found if class file was not opened
                             if (codeClass == null)
                             {
-                                List<String> hits = new List<String>();
-                                foreach (ProjectItem item in p.ProjectItems)
-                                {
-                                    if (item.Name.Contains(lookup.typeName))
-                                    {
-                                        hits.AddRange(GetClassFiles(item));
-                                    }
-                                }
+                                List<String> hits = new List<string>();
+                                FindClasses(lookup, p.ProjectItems, ref hits);
                                 //Open proper documents
                                 foreach (string hit in hits)
                                 {
@@ -437,12 +430,43 @@ namespace DynaTrace.CodeLink
             return codeFunctions;
         }
 
+        private void FindClasses(Lookup lookup, ProjectItems projectItems, ref List<String> hits)
+        {
+            foreach (ProjectItem item in projectItems)
+            {
+                try
+                {
+                    if (item.ProjectItems != null) FindClasses(lookup, item.ProjectItems, ref hits);
+                    else if (!HasClassFiles(item)) continue;
+                    for (short i = 1; i<=item.FileCount; i++)
+                    {
+                        SyntaxTree tree = CSharpSyntaxTree.ParseText(File.ReadAllText(item.FileNames[i]));
+                        var root = (CompilationUnitSyntax)tree.GetRoot();
+                        //get all classes from file
+                        var classes = root.DescendantNodes()
+                            .OfType<ClassDeclarationSyntax>()
+                            .ToList();
+                        foreach (var clazz in classes)
+                        {
+                            if (lookup.typeName.Contains(clazz.Identifier.ToString()))
+                            {
+                                hits.AddRange(GetClassFiles(item));
+                            }
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    log(LOG_ERROR + e.ToString());
+                }
+            }
+        }
+
         public static string DecodeProjectKind(string kind)
         {
             const string PROJECT_KIND_ENTERPRISE_PROJECT = "{7D353B21-6E36-11D2-B35A-0000F81F0C06}";
             const string PROJECT_KIND_CPLUSPLUS_PROJECT = "{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}";
             const string PROJECT_KIND_VSNET_SETUP = "{54435603-DBB4-11D2-8724-00A0C9A8B90C}";
-            const string PROJECT_KIND_WEBSITE_PROJECT = "{E24C65DC-7377-472B-9ABA-BC803B73C61A}";
 
             string result = "<unknown>";
 
