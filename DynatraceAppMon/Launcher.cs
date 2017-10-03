@@ -588,6 +588,18 @@ namespace FirstPackage
             {
                 DebugStartAction = "0";
                 launchURL = GetProperty(project, "ProjectUrl", "");
+                foreach (Property property in project.Properties)
+                {
+                    try
+                    {
+                        String test = property.Name + ", " + property.Value + ", " + property;
+                        context.log(test);
+                    }
+                    catch (Exception ex)
+                    {
+                        
+                    }
+                }
             }
             switch (DebugStartAction)
             {
@@ -718,7 +730,8 @@ namespace FirstPackage
             if (project.Kind.Contains(WEB_APPLICATION_DOT_NET_CORE_GUID))
             {
                 string ProjectPath = GetProperty(project, "FullPath", "");
-                ProjectPath = "C:\\Users\\piotr.lugowski\\source\\repos\\eShopOnWeb\\src";
+
+                //ProjectPath = "C:\\Users\\piotr.lugowski\\source\\repos\\eShopOnWeb\\src";
                 startArguments = "/config:\"" + ProjectPath + "\\..\\.vs\\config\\applicationhost.config\" /site:\"" + project.Name + "\" /apppool:\"Clr4IntegratedAppPool\"";
                 //startArguments = "/config:\"C:\\Users\\piotr.lugowski\\source\\repos\\WebApplication2DotNetCore\\.vs\\config\\applicationhost.config\" /site:\"WebApplication2DotNetCore\" /apppool:\"Clr4IntegratedAppPool";
             }
