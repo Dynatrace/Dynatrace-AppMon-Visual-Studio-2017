@@ -292,7 +292,7 @@ namespace DynaTrace.CodeLink
                 {
                     if (projectItem.FileCodeModel != null && HasClassFiles(projectItem))
                     {
-                        codeType = RecurseCodeElements(projectItem.FileCodeModel.CodeElements, fullName);
+                        codeType = FindCodeType(projectItem.FileCodeModel.CodeElements, fullName);
                         if (codeType != null)
                         {
                             break;
@@ -309,7 +309,7 @@ namespace DynaTrace.CodeLink
             return codeType;
         }
 
-        private CodeType RecurseCodeElements(CodeElements codeElements, string fullName)
+        private CodeType FindCodeType(CodeElements codeElements, string fullName)
         {
             CodeType codeType = null;
             if (codeElements != null)
@@ -318,7 +318,7 @@ namespace DynaTrace.CodeLink
                 {
                     if (codeElement.Kind == vsCMElement.vsCMElementNamespace)
                     {
-                        codeType = RecurseCodeElements(((CodeNamespace)codeElement).Members, fullName);
+                        codeType = FindCodeType(((CodeNamespace)codeElement).Members, fullName);
                     }
                     else if (codeElement.Kind == vsCMElement.vsCMElementClass)
                     {
@@ -436,28 +436,34 @@ namespace DynaTrace.CodeLink
             {
                 try
                 {
-                    if (item.ProjectItems != null) FindClasses(lookup, item.ProjectItems, ref hits);
-                    else if (!HasClassFiles(item)) continue;
-                    for (short i = 1; i<=item.FileCount; i++)
+                    if (item.ProjectItems != null)
                     {
-                        SyntaxTree tree = CSharpSyntaxTree.ParseText(File.ReadAllText(item.FileNames[i]));
-                        var root = (CompilationUnitSyntax)tree.GetRoot();
-                        //get all classes from file
-                        var classes = root.DescendantNodes()
-                            .OfType<ClassDeclarationSyntax>()
-                            .ToList();
-                        foreach (var clazz in classes)
+                        FindClasses(lookup, item.ProjectItems, ref hits);
+                    }
+                    else if (HasClassFiles(item))
+                    {
+                        //Indexes of FileNames are from 1 to FileCount for the project item.
+                        for (short i = 1; i <= item.FileCount; i++)
                         {
-                            if (lookup.typeName.Contains(clazz.Identifier.ToString()))
+                            SyntaxTree tree = CSharpSyntaxTree.ParseText(File.ReadAllText(item.FileNames[i]));
+                            var root = (CompilationUnitSyntax)tree.GetRoot();
+                            //get all classes from file
+                            var classes = root.DescendantNodes()
+                                .OfType<ClassDeclarationSyntax>()
+                                .ToList();
+                            foreach (var clazz in classes)
                             {
-                                hits.AddRange(GetClassFiles(item));
+                                if (lookup.typeName.Contains(clazz.Identifier.ToString()))
+                                {
+                                    hits.AddRange(GetClassFiles(item));
+                                }
                             }
                         }
                     }
                 }
                 catch (Exception e)
                 {
-                    log(LOG_ERROR + e.ToString());
+                    log(LOG_ERROR + e);
                 }
             }
         }
