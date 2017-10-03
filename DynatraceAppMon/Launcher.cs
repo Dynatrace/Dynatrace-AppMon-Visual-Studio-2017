@@ -592,7 +592,7 @@ namespace FirstPackage
                 {
                     try
                     {
-                        String test = property.Name + ", " + property.Value + ", " + property;
+                        String test = property.Name + ": " + property.Value;
                         context.log(test);
                     }
                     catch (Exception ex)
