@@ -21,7 +21,7 @@ namespace FirstPackage
         /// <summary>
         /// web site project GUID refers to project type
         /// </summary>
-        private readonly string WEB_SITE_PROJECT_TYPE_GUID = "{E24C65DC-7377-472B-9ABA-BC803B73C61A}";
+        private readonly string WEB_SITE_PROJECT_TYPE_GUID = Context.PROJECT_KIND_WEBSITE_PROJECT;
         /// <summary>
         /// web application project GUID refers to project subtype, project type GUID in this case describes language thus
         /// may be omitted in launch type check

@@ -5,12 +5,15 @@ using System.Collections.Generic;
 using System.Text;
 using System.Diagnostics;
 
-
-using Microsoft.Win32;
-
 using EnvDTE;
 using EnvDTE80;
 using System.Globalization;
+using System.Linq;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using TextRange = EnvDTE.TextRange;
+using TextSelection = EnvDTE.TextSelection;
 
 namespace DynaTrace.CodeLink
 {
@@ -21,6 +24,7 @@ namespace DynaTrace.CodeLink
         public const string LOG_INFO = "INFO ";
         public const string LOG_WARN = "WARN ";
         public const string LOG_ERROR = "ERROR ";
+        public const string PROJECT_KIND_WEBSITE_PROJECT = "{E24C65DC-7377-472B-9ABA-BC803B73C61A}";
 
         private DynatraceConfig config;
         private string visualStudioVersion;
@@ -131,7 +135,8 @@ namespace DynaTrace.CodeLink
                 {
                     sw = File.AppendText(path);
                 }
-                else {
+                else
+                {
                     sw = File.CreateText(path);
                 }
                 sw.WriteLine(getDateAndTime() + " " + text);
@@ -238,7 +243,8 @@ namespace DynaTrace.CodeLink
                     cf.ShowDialog();
                     return true;
                 }
-                else {
+                else
+                {
                     return markType(lookup, dte.Solution.Projects);
                 }
                 return false;
@@ -248,6 +254,86 @@ namespace DynaTrace.CodeLink
                 log(Context.LOG_ERROR + e.ToString());
                 return false;
             }
+        }
+
+        private bool HasClassFiles(ProjectItem projectItem)
+        {
+            return (GetClassFiles(projectItem, true).Any());
+        }
+
+        private List<String> GetClassFiles(ProjectItem projectItem, bool stopOnFirstFound)
+        {
+            List<String> classFiles = new List<string>();
+            //Indexes of FileNames are from 1 to FileCount for the project item.
+            for (short i = 1; i <= projectItem.FileCount; i++)
+            {
+                string fileName = projectItem.FileNames[i];
+                string fileExtension = Path.GetExtension(fileName);
+                if (fileExtension != null && (fileExtension.EndsWith(".cs")))
+                {
+                    classFiles.Add(fileName);
+                    if (stopOnFirstFound) break;
+                }
+            }
+            return classFiles;
+        }
+
+        private List<String> GetClassFiles(ProjectItem projectItem)
+        {
+            return GetClassFiles(projectItem, false);
+        }
+
+        private CodeType FindCodeType(ProjectItems projectItems, string fullName)
+        {
+            CodeType codeType = null;
+            if (projectItems != null)
+            {
+                foreach (ProjectItem projectItem in projectItems)
+                {
+                    if (projectItem.FileCodeModel != null && HasClassFiles(projectItem))
+                    {
+                        codeType = FindCodeType(projectItem.FileCodeModel.CodeElements, fullName);
+                        if (codeType != null)
+                        {
+                            break;
+                        }
+                    }
+
+                    codeType = FindCodeType(projectItem.ProjectItems, fullName);
+                    if (codeType != null)
+                    {
+                        break;
+                    }
+                }
+            }
+            return codeType;
+        }
+
+        private CodeType FindCodeType(CodeElements codeElements, string fullName)
+        {
+            CodeType codeType = null;
+            if (codeElements != null)
+            {
+                foreach (CodeElement codeElement in codeElements)
+                {
+                    if (codeElement.Kind == vsCMElement.vsCMElementNamespace)
+                    {
+                        codeType = FindCodeType(((CodeNamespace)codeElement).Members, fullName);
+                    }
+                    else if (codeElement.Kind == vsCMElement.vsCMElementClass)
+                    {
+                        if (((CodeClass)codeElement).FullName == fullName)
+                        {
+                            codeType = (CodeType)codeElement;
+                        }
+                    }
+                    if (codeType != null)
+                    {
+                        break;
+                    }
+                }
+            }
+            return codeType;
         }
 
         /// <summary>scan every project of the solution about the search method, and returned ArrayList which contains every hit, returns an empty ArrayList if nothing is found</summary>
@@ -273,8 +359,21 @@ namespace DynaTrace.CodeLink
                         try
                         {
                             // search in the complete codeModel of the project after the required class
-
                             codeClass = (CodeClass2)p.CodeModel.CodeTypeFromFullName(lookup.typeName);
+
+                            //search in project items - works for Website projects
+                            //CodeClass were not found if class file was not opened
+                            if (codeClass == null)
+                            {
+                                List<String> hits = new List<string>();
+                                FindClasses(lookup, p.ProjectItems, ref hits);
+                                //Open proper documents
+                                foreach (string hit in hits)
+                                {
+                                    dte.Documents.Open(hit);
+                                }
+                                codeClass = (CodeClass2)FindCodeType(p.ProjectItems, lookup.typeName);
+                            }
 
                             log(String.Format(Context.LOG_INFO + "getMethod CodeTypeFromFullName({0}) returns {1}", lookup.typeName, codeClass == null ? "null" : codeClass.Name));
 
@@ -316,7 +415,8 @@ namespace DynaTrace.CodeLink
                             log(Context.LOG_ERROR + e.ToString());
                         }
                     }
-                    else {
+                    else
+                    {
                         log(String.Format(Context.LOG_INFO + "Project {0} has no CodeModel - ProjectType is {1}", p.Name, DynaTrace.CodeLink.Context.DecodeProjectKind(p.Kind)));
                         if (p != null) logProjectData(p);
                     }
@@ -328,6 +428,44 @@ namespace DynaTrace.CodeLink
                 }
             }
             return codeFunctions;
+        }
+
+        private void FindClasses(Lookup lookup, ProjectItems projectItems, ref List<String> hits)
+        {
+            foreach (ProjectItem item in projectItems)
+            {
+                try
+                {
+                    if (item.ProjectItems != null)
+                    {
+                        FindClasses(lookup, item.ProjectItems, ref hits);
+                    }
+                    else if (HasClassFiles(item))
+                    {
+                        //Indexes of FileNames are from 1 to FileCount for the project item.
+                        for (short i = 1; i <= item.FileCount; i++)
+                        {
+                            SyntaxTree tree = CSharpSyntaxTree.ParseText(File.ReadAllText(item.FileNames[i]));
+                            var root = (CompilationUnitSyntax)tree.GetRoot();
+                            //get all classes from file
+                            var classes = root.DescendantNodes()
+                                .OfType<ClassDeclarationSyntax>()
+                                .ToList();
+                            foreach (var clazz in classes)
+                            {
+                                if (lookup.typeName.Contains(clazz.Identifier.ToString()))
+                                {
+                                    hits.AddRange(GetClassFiles(item));
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    log(LOG_ERROR + e);
+                }
+            }
         }
 
         public static string DecodeProjectKind(string kind)
@@ -387,6 +525,10 @@ namespace DynaTrace.CodeLink
             else if (kind.Equals(PROJECT_KIND_VSNET_SETUP))
             {
                 result = "Setup project";
+            }
+            else if (kind.Equals(PROJECT_KIND_WEBSITE_PROJECT))
+            {
+                result = "Web Site project";
             }
 
             return result;
@@ -468,19 +610,21 @@ namespace DynaTrace.CodeLink
                 CodeClass2 codeClass2 = (CodeClass2)codeClass;
                 codeElements = codeClass2.Parts;
             }
-            else {
+            else
+            {
                 codeElements = codeClass.Members;
             }
-
-            CodeFunction codeFunction = null;
 
             foreach (CodeElement elem in codeElements)
             {
                 if (elem is CodeClass)
                 {
-                    codeFunction = getMethod((CodeClass)elem, parameters, false, methodName);
+                    CodeFunction cf = getMethod((CodeClass)elem, parameters, false, methodName);
+                    if (cf != null)
+                    {
+                        return cf;
+                    }
                 }
-
                 if (elem is CodeFunction)
                 {
                     CodeFunction cf = (CodeFunction)elem;
@@ -570,6 +714,14 @@ namespace DynaTrace.CodeLink
                     if (p.CodeModel != null)
                     {
                         CodeClass2 codeClass = (CodeClass2)p.CodeModel.CodeTypeFromFullName(lookup.typeName);
+                        if (codeClass == null)
+                        {
+                            CodeType codeType = FindCodeType(p.ProjectItems, lookup.typeName);
+                            if (codeType != null)
+                            {
+                                codeClass = (CodeClass2)codeType;
+                            }
+                        }
                         if (codeClass != null)
                         {
                             try
