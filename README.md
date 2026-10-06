@@ -1,3 +1,12 @@
+> [!IMPORTANT]
+> **This repository is archived and no longer maintained or supported.**
+>
+> - **Archived:** 2026-10-06
+> - **Reason:** AppMon product EOL
+> - **Replacement:** None
+>
+> Preserved for historical and migration reference only. No updates, including security updates, will be provided.
+> See the [Dynatrace Archive organization README](https://github.com/Dynatrace-Archive) for usage and security guidance.
 <img src="/img/logo/visual-studio.png" width="300" />
 
 # Dynatrace AppMon Visual Studio 2017 Extension
